@@ -1,45 +1,51 @@
 #!/usr/bin/env perl
-use Mojolicious::Lite;
-use feature qw(signatures);
-no warnings qw(experimental::signatures);
-
+use Mojolicious::Lite -signatures;
 use lib './shared/lib';
 use Base::Config;
+use Slack::MessageHook;
 
-my $config      = Base::Config->new;
-my $bot_name    = 'CTO';
-my $bot_channel = '#bots';
+helper slack => sub($c) {
+    state $client = Slack::MessageHook->new(
+        ua  => $c->ua,
+        url => Base::Config->new->slack->{hook_url}
+    );
+};
+
 
 get '/' => sub($c) {
-  return $c->redirect_to('login_form') unless $c->session('username');
-  $c->render(template => 'message');
+    return $c->redirect_to('login_form') unless $c->session('username');
+    $c->render(template => 'message');
 } => 'message_form';
 
+
 post '/send' => sub($c) {
-  $c->ua->post( $config->slack->{hook_url} => json => {
-      username => $bot_name,
-      channel  => $bot_channel,
-      text     => sprintf('%s `sent by %s`', $c->param('message'), $c->session('username'))
-  } => sub($ua, $tx) {
-      $c->flash(feedback => 'Message sent!');
-      $c->redirect_to('message_form');
-  });
+    $c->slack->send(
+        sprintf('%s `sent by %s`', map{$c->param($_)} qw/ message username /)
+    )->then( sub($tx) {
+        $c->flash(feedback => 'Message sent!');
+        $c->redirect_to('message_form');
+    })->catch(sub($err) {
+        $c->log->error("Slack error: $err");
+    });
 } => 'send_message';
 
+
 get '/login' => sub($c) {
-  return $c->redirect_to('message_form') if $c->session('username');
-  $c->render(template => 'login');
+    return $c->redirect_to('message_form') if $c->session('username');
+    $c->render(template => 'login');
 } => 'login_form';
 
+
 post '/login' => sub($c) {
-  my $name = $c->param('username') || return $c->redirect_to('login_form');
-  $c->session( username => $name );
-  $c->redirect_to('message_form');
+    my $name = $c->param('username') || return $c->redirect_to('login_form');
+    $c->session( username => $name );
+    $c->redirect_to('message_form');
 } => 'login';
 
+
 get '/logout' => sub($c) {
-  delete $c->session->{username};
-  $c->redirect_to('login_form');
+    delete $c->session->{username};
+    $c->redirect_to('login_form');
 };
 
 app->start;
