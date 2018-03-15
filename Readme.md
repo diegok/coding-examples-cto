@@ -2,7 +2,6 @@
 
 Everithing should be run with make. To get started:
 
-> make init
-> make up
+> make init up
 
 Run 'make' to get full help.
