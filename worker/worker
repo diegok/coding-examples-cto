@@ -1,0 +1,11 @@
+#!/usr/bin/env perl
+use Resque;
+use lib './shared/lib';
+use Base::Config;
+
+my $w = Resque->new(
+    redis => Base::Config->new->redis_dsn || 'redis:6379'
+)->worker;
+$w->verbose(1);
+$w->add_queue(qw/ priority general /);
+$w->work;

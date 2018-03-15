@@ -8,7 +8,7 @@ help: ## This help.
 
 .DEFAULT_GOAL := help
 
-init: build_front ## Build containers before run compose to inject shared.
+init: build_front build_worker ## Build all images (must be run before up)
 
 start: ## Start all services in dettached mode (see logs).
 	docker-compose up -d
@@ -39,3 +39,7 @@ build_front: ## Build front-app injecting shared dir
 	docker-compose build front-app
 	rm -rf front-app/shared
 
+build_worker: ## Build front-app injecting shared dir
+	cp -r ./shared worker/
+	docker-compose build worker
+	rm -rf worker/shared

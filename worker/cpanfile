@@ -1,4 +1,6 @@
 requires 'Mojolicious';
-requires 'Mojolicious::Plugin::Resque';
 requires 'Moo';
 requires 'File::Slurp';
+requires 'IO::Socket::SSL';
+requires 'Resque';
+

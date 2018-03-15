@@ -2,13 +2,9 @@
 use Mojolicious::Lite -signatures;
 use lib './shared/lib';
 use Base::Config;
-use Slack::MessageHook;
 
-helper slack => sub($c) {
-    state $client = Slack::MessageHook->new(
-        ua  => $c->ua,
-        url => Base::Config->new->slack->{hook_url}
-    );
+plugin resque => {
+    redis => Base::Config->new->redis_dsn || 'redis:6379'
 };
 
 
@@ -19,14 +15,17 @@ get '/' => sub($c) {
 
 
 post '/send' => sub($c) {
-    $c->slack->send(
-        sprintf('%s `sent by %s`', map{$c->param($_)} qw/ message username /)
-    )->then( sub($tx) {
-        $c->flash(feedback => 'Message sent!');
-        $c->redirect_to('message_form');
-    })->catch(sub($err) {
-        $c->log->error("Slack error: $err");
+    $c->resque( priority => {
+        class => 'Task::SlackMessage',
+        args  => [{
+            message => sprintf('%s `sent by %s`', map{$c->param($_)} qw/
+                message username
+            /)
+        }]
     });
+
+    $c->flash(feedback => 'Message sent!');
+    $c->redirect_to('message_form');
 } => 'send_message';
 
 
