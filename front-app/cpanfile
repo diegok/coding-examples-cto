@@ -1,0 +1,5 @@
+requires 'Mojolicious';
+requires 'Moo';
+requires 'File::Slurp';
+requires 'IO::Socket::SSL';
+

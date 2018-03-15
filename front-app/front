@@ -1,0 +1,135 @@
+#!/usr/bin/env perl
+use Mojolicious::Lite;
+use feature qw(signatures);
+no warnings qw(experimental::signatures);
+
+use lib './shared/lib';
+use Base::Config;
+
+my $config      = Base::Config->new;
+my $bot_name    = 'CTO';
+my $bot_channel = '#bots';
+
+get '/' => sub($c) {
+  return $c->redirect_to('login_form') unless $c->session('username');
+  $c->render(template => 'message');
+} => 'message_form';
+
+post '/send' => sub($c) {
+  $c->ua->post( $config->slack->{hook_url} => json => {
+      username => $bot_name,
+      channel  => $bot_channel,
+      text     => sprintf('%s `sent by %s`', $c->param('message'), $c->session('username'))
+  } => sub($ua, $tx) {
+      $c->flash(feedback => 'Message sent!');
+      $c->redirect_to('message_form');
+  });
+} => 'send_message';
+
+get '/login' => sub($c) {
+  return $c->redirect_to('message_form') if $c->session('username');
+  $c->render(template => 'login');
+} => 'login_form';
+
+post '/login' => sub($c) {
+  my $name = $c->param('username') || return $c->redirect_to('login_form');
+  $c->session( username => $name );
+  $c->redirect_to('message_form');
+} => 'login';
+
+get '/logout' => sub($c) {
+  delete $c->session->{username};
+  $c->redirect_to('login_form');
+};
+
+app->start;
+__DATA__
+
+@@ message.html.ep
+% layout 'default';
+% title 'Send message';
+<div class="container-fluid">
+  <div class="row">
+    %= form_for 'send_message', class => "form-message"  => begin
+      <h1 class="h3 mb-3 font-weight-normal">Hello <%= session('username') %></h1>
+      <p>Please, write some message to send to slack.</p>
+      <label for="username" class="sr-only">Username</label>
+      <textarea name="message" class="form-control h-50" required autofocus></textarea>
+      <div class="checkbox mb-3"></div>
+      <button class="btn btn-lg btn-primary btn-block" type="submit">Send message</button>
+    % end
+  </div>
+  % if ( my $msg = flash('feedback') ) {
+  <div class="row" style="margin-top:80px;">
+    <div class="col-sm alert alert-success" role="alert"><%= $msg %></div>
+  </div>
+  % }
+</div>
+
+@@ login.html.ep
+% layout 'default';
+% title 'Login';
+%= form_for 'login', class => "form-signin" => begin
+  <h1 class="h3 mb-3 font-weight-normal">Please sign in</h1>
+  <label for="username" class="sr-only">Username</label>
+  <input type="text" name="username" class="form-control" placeholder="Your username" required autofocus>
+  <div class="checkbox mb-3"></div>
+  <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+% end
+
+@@ layouts/default.html.ep
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title><%= title %></title>
+    <%= stylesheet "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" %>
+    <%= stylesheet '/style.css' %>
+  </head>
+  <body class="text-center">
+    <%= content %>
+  </body>
+</html>
+
+@@ style.css
+html, body { height: 100%; }
+
+body {
+  display: -ms-flexbox;
+  display: -webkit-box;
+  display: flex;
+  -ms-flex-align: center;
+  -ms-flex-pack: center;
+  -webkit-box-align: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+}
+
+.form-signin {
+  width: 100%;
+  max-width: 330px;
+  padding: 15px;
+  margin: 0 auto;
+}
+
+.form-message {
+  width: 100%;
+  max-width: 520px;
+  padding: 15px;
+  margin: 0 auto;
+}
+
+.form-message .form-control,
+.form-signin .form-control {
+  position: relative;
+  box-sizing: border-box;
+  height: auto;
+  padding: 10px;
+  font-size: 16px;
+}
+.form-signin .form-control:focus {
+  z-index: 2;
+}

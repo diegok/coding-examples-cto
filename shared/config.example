@@ -1,0 +1,6 @@
+{
+    "_comment": "Please copy this file as config.json as it will be used by shared config loader library",
+    slack: {
+        "hook_url": "fill with slack hook URL"
+    }
+}

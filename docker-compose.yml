@@ -1,0 +1,9 @@
+version: "3"
+
+services:
+  front-app:
+    image: front-app:latest
+    hostname: front-app
+    build: ./front-app
+    ports:
+      - "3000:3000"
