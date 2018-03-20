@@ -9,7 +9,8 @@ use Slack::Bot::Message;
 require UNIVERSAL::require;
 
 has token      => is => 'ro', required => 1;
-has connection => is => 'lazy', default => sub { Mojo::SlackRTM->new( token => shift->token ) };
+has connection => is => 'lazy',
+    default => sub { Mojo::SlackRTM->new( token => shift->token ) };
 
 has ticker => is => 'lazy', default => sub {
     my $self = shift;
@@ -73,7 +74,7 @@ sub _init_events {
     $self->ticker;
 }
 
-sub tick { shift->connection->log->debug('tick') }
+sub tick { shift->dispatch('tick') }
 
 sub dispatch {
     my ( $self, $event ) = ( shift, shift );
